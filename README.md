@@ -7,7 +7,7 @@
 ### Run
 Backend (stack is setup with docker enabled):
 ```Shell
-stack --docker-run-args='--net=bridge --publish=3000:3000' ghci
+stack --docker-run-args='--net=bridge --publish=9998:9998' ghci
 ghci> main
 ```
 Frontend:
