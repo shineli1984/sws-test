@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { equals } from 'ramda';
 import axios from 'axios'
+import { companiesUrl } from '../../config'
 
 export const initialState = {
   params: null,
@@ -58,8 +59,7 @@ export const companiesSlice = createSlice({
     companiesLoaded: (state, action) => {
       const { companies, params } = action.payload
 
-      // TODO: factor params comparing logic out.
-      if (equals(state.params, params)) {
+      if (paramsMatch(state, params)) {
         state.companies = companies
         state.loading = false
         state.errors.loadingError = null
@@ -69,7 +69,7 @@ export const companiesSlice = createSlice({
     companiesLoadingFailed: (state, action) => {
       const { params } = action.payload
 
-      if (equals(state.params, params)) {
+      if (paramsMatch(state, params)) {
         state.params = null
         state.loading = false
         state.errors.loadingError = "Loading companies failed, please try again later." 
@@ -78,10 +78,11 @@ export const companiesSlice = createSlice({
   },
 });
 
+const paramsMatch = (state, params) => equals(state.params, params)
+
 export const { sort, sortDirection, filterScore, filterExchanges, setLoading, loadingCompanies, companiesLoaded, companiesLoadingFailed } = companiesSlice.actions;
 
 export const fetchCompanies = (filters, sortBy) => dispatch => {
-  const baseUrl = "http://localhost:9998"
   const params = {
       desc: sortBy.desc,
       sortBy: sortBy.field,
@@ -89,7 +90,7 @@ export const fetchCompanies = (filters, sortBy) => dispatch => {
       score: filters.score || null,
   };
   dispatch(loadingCompanies({ params }))
-  axios.get(baseUrl + "/companies", { params })
+  axios.get(companiesUrl, { params })
     .then(response => {
       dispatch(companiesLoaded({companies: response.data, params}))
     })
