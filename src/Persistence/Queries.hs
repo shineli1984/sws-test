@@ -18,14 +18,8 @@ import GHC.Int (Int64)
 import qualified Data.List as L
 import Data.Maybe (maybeToList)
 
--- TODO: make configuration as command line opts
-connString :: Text
-connString = "db/sws.sqlite3" 
-connPoolSize :: Int
-connPoolSize = 10
-
-run :: MonadUnliftIO m => ReaderT SqlBackend (ResourceT (LoggingT m)) a -> m a
-run query = runStdoutLoggingT . runResourceT $ withSqlitePool connString connPoolSize (\backend ->
+run :: MonadUnliftIO m => Int -> Text -> ReaderT SqlBackend (ResourceT (LoggingT m)) a -> m a
+run connPoolSize connString query = runStdoutLoggingT . runResourceT $ withSqlitePool connString connPoolSize (\backend ->
     flip runSqlPool backend $ query
   )
 

@@ -6,22 +6,41 @@
 
 ### Run
 Backend (stack is setup with docker enabled):
-```Shell
-stack --docker-run-args='--net=bridge --publish=9998:9998' ghci
-ghci> main
+```shell
+# run with default options
+stack --docker-run-args='--net=bridge --publish=9998:9998' run
 ```
+Backend with customised options:
+```shell
+stack install
+$HOME/.local/bin/sws-test-exe --help
+```
+this will produce the following:
+```
+Companies page backend
+
+Usage: sws-test-exe [-c|--connStr CONNSTR] [-s|--connPoolSize INT] 
+                    [-o|--allowOrigin ARG] [-p|--port INT]
+  Sws test
+
+Available options:
+  -c,--connStr CONNSTR     Database connection
+                           string (default: "db/sws.sqlite3")
+  -s,--connPoolSize INT    Connection pool size (default: 10)
+  -o,--allowOrigin ARG     Access-Control-Allow-Origin
+                           header (default: "http://localhost:3000")
+  -p,--port INT            Port for server (default: 9998)
+  -h,--help                Show this help text
+```
+
 Frontend:
-```Shell
+```shell
 cd frontend
 npm run
 ```
 
 ### Unit/Property tests
-Backend:
-```Shell
-stack test
-```
 Frontend
-```Shell
+```shell
 npm test
 ```

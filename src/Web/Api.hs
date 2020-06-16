@@ -9,7 +9,7 @@ import Data.Aeson
 import Data.Proxy
 import qualified Data.Map as Map
 import Data.Maybe (maybeToList, fromMaybe)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import GHC.Generics
 import GHC.TypeLits
 import Servant.API
@@ -80,26 +80,30 @@ api = Proxy
 
 data State = State
   { cache :: (Cache String [Response])
+  , accessControlAllowOrigin :: String
+  , connStr :: String
+  , connPoolSize :: Int
   }
 
--- TODO: this should be controlled by configuration
-addAllowOriginHeader :: a -> Headers '[Header "Access-Control-Allow-Origin" String] a
-addAllowOriginHeader = addHeader "*"
+addAllowOriginHeader :: String -> a -> Headers '[Header "Access-Control-Allow-Origin" String] a
+addAllowOriginHeader = addHeader
 
 companyServer :: ServerT CompanyAPI (ReaderT State Handler)
 companyServer numberOfPrices sortBy desc exchanges score = do 
+  State { cache, accessControlAllowOrigin, connStr, connPoolSize } <- ask
+
   let cacheKey = (show numberOfPrices) 
               <> (show sortBy) 
               <> (show desc) 
               <> (show exchanges) 
               <> (show score) 
-  State { cache } <- ask
+      run' = run connPoolSize . pack $ connStr
 
   liftIO $ do
     cacheResult <- cache `C.lookup'` cacheKey
-    addAllowOriginHeader <$> case cacheResult of
+    addAllowOriginHeader accessControlAllowOrigin <$> case cacheResult of
       Just r -> pure r
-      Nothing -> ( run $ do
+      Nothing -> ( run' $ do
         let symbols = fmap SymbolFilter exchanges
             score' = fmap ScoreFilter $ score
 
@@ -109,7 +113,11 @@ companyServer numberOfPrices sortBy desc exchanges score = do
 
         prices <-
           case numberOfPrices of
-              Just n | n > 0 -> fmap (zip companyIds) . sequence . pricesQuery (min n maxNumberOfPrices) $ companyIds
+              Just n | n > 0 -> 
+                fmap (zip companyIds)
+                . sequence
+                . pricesQuery (min n maxNumberOfPrices)
+                $ companyIds
               _ -> pure []
 
         let prices' = Map.fromList prices
