@@ -1,7 +1,6 @@
 import React from 'react'
 import {
   filterScore,
-  selectLoading,
   selectExchanges,
   filterExchanges,
   sort,
@@ -14,20 +13,12 @@ import TextField from '@material-ui/core/TextField';
 import { useSelector, useDispatch } from 'react-redux';
 import Autocomplete from '@material-ui/lab/Autocomplete';
 import Radio from '@material-ui/core/Radio';
-import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Switch from '@material-ui/core/Switch';
 import Grid from '@material-ui/core/Grid';
+import Box from '@material-ui/core/Box';
 import Alert from '@material-ui/lab/Alert';
-import { makeStyles } from '@material-ui/core/styles';
-
-const useStyles = makeStyles({
-  root: {
-    padding: "1rem"
-  }
-});
-
 
 const Filters = () => {
   const exchanges = useSelector(selectExchanges);
@@ -37,14 +28,13 @@ const Filters = () => {
   const dispatch = useDispatch();
   const dispatchSort = field => dispatch(sort({field}));
   const dispatchsortDirection = desc => dispatch(sortDirection({desc}));
-  const classes = useStyles()
 
-  return <FormControl component="fieldset" className={classes.root}>
+  return <Box m={2}>
     <Grid container spacing={3}>
       {
-        loadingError ? <Grid xs={12}><Alert severity="error">{loadingError}</Alert></Grid> : null
+        loadingError ? <Grid item xs={12}><Alert severity="error">{loadingError}</Alert></Grid> : null
       }
-      <Grid item xs={12} sm={6}>
+      <Grid item xs={12} sm={6} md={4}>
         <Autocomplete
           multiple
           value={filters.exchanges}
@@ -92,7 +82,7 @@ const Filters = () => {
         />
       </Grid>
     </Grid>
-  </FormControl>
+  </Box>
 }
   
 
