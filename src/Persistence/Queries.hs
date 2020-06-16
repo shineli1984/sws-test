@@ -30,119 +30,71 @@ run query = runStdoutLoggingT . runResourceT $ withSqlitePool connString connPoo
   )
 
 type Q = ReaderT SqlBackend (ResourceT (LoggingT IO))
-
-class ToRawSql a where
-  sql :: a -> Text
-class ToParam a where
-  param :: a -> [PersistValue]
-instance ToParam a => ToParam [a] where
-  param ps = ps >>= param
-instance ToParam a => ToParam (Maybe a) where
-    param ps = param . maybeToList $ ps
-
 data SortingDirection = Desc | Asc deriving (Show)
-instance ToRawSql SortingDirection where
-  sql Desc = "DESC"
-  sql Asc = "ASC"
-
 data Sorting a = Score a | Variance a deriving (Show)
-instance (ToRawSql a) => ToRawSql (Sorting a) where
-  sql (Score a) = "order by score " <> sql a
-  sql (Variance a) = "order by variance " <> sql a
-
-instance ToRawSql a => ToRawSql (Maybe a) where
-  sql (Just sorting) = sql sorting
-  sql _ = ""
-
 newtype SymbolFilter = SymbolFilter Text
-instance ToRawSql SymbolFilter where
-  sql (SymbolFilter sym) = "swsCompany.exchange_symbol = ?"
-instance ToParam SymbolFilter where
-  param (SymbolFilter sym) = [PersistText sym]
-
 newtype ScoreFilter = ScoreFilter Int64
-instance ToRawSql ScoreFilter where
-  sql (ScoreFilter score) = "score >= ?"
-instance ToParam  ScoreFilter where
-  param (ScoreFilter score) = [PersistInt64 score]
-
-instance ToRawSql [SymbolFilter] where
-  sql [] = ""
-  sql filters = intercalate " OR " . fmap sql $ filters
-
-instance ToRawSql ([SymbolFilter], Maybe ScoreFilter) where
-  sql ([], Nothing) = ""
-  sql (symbolFilters, Nothing) = "where " <> sql symbolFilters
-  sql ([], Just scoreFilter) = "where " <> sql scoreFilter
-  sql (symbolFilters, Just scoreFilter) = "where (" <> sql symbolFilters <> ") AND " <> sql scoreFilter
 
 companiesQuery :: [SymbolFilter] 
                -> Maybe ScoreFilter 
                -> Maybe (Sorting SortingDirection)
-               -> Q [(Entity SwsCompany, Single (Maybe Double), Single (Maybe Double), Single (Maybe Int64))]
-companiesQuery symbolFilters scoreFilter sorting = 
-    rawSql ( "SELECT ??,"
-          <> " (SELECT AVG(t.price*t.price)-AVG(t.price)*AVG(t.price) FROM (SELECT swsCompanyPriceClose.price FROM swsCompanyPriceClose WHERE swsCompany.id=swsCompanyPriceClose.company_id ORDER BY swsCompanyPriceClose.date DESC LIMIT 90) AS t) AS variance,"
-          <> " (SELECT swsCompanyPriceClose.price FROM swsCompanyPriceClose WHERE swsCompany.id = swsCompanyPriceClose.company_id ORDER BY swsCompanyPriceClose.date DESC LIMIT 1),"
-          <> " (SELECT swsCompanyScore.total FROM swsCompanyScore WHERE swsCompany.id=swsCompanyScore.company_id ORDER BY swsCompanyScore.date_generated DESC LIMIT 1) AS score"
-          <> " FROM swsCompany"
-          -- where
-          <> " " <> sql (symbolFilters, scoreFilter)
-          -- order by
-          <> " " <> sql sorting
-           ) $ param symbolFilters <> param scoreFilter
+               -> Q [(Entity SwsCompany, Value (Maybe Double), Value (Maybe Double), Value (Maybe Int64))]
+companiesQuery filters scoreFilter sorting =
+  select $ do
+      t2 <- from $ Table @SwsCompany
+      
+      -- varaince
+      variance <- pure $ subSelectMaybe $ do
+        t1 <- from $ SelectQuery $ do
+            t <- from $ Table @SwsCompanyPriceClose
+            orderBy [desc $ t ^. SwsCompanyPriceCloseDate]
+            limit 90
+            pure t
+        where_ $ t1 ^. SwsCompanyPriceCloseCompany_id ==. t2 ^. SwsCompanyId
+        pure $ avg_ (t1 ^. SwsCompanyPriceClosePrice)
+      
+      -- last price
+      lastPrice <- pure $ subSelect $ do
+        t <- from $ SelectQuery $ do
+            t <- from $ Table @SwsCompanyPriceClose
+            orderBy [desc $ t ^. SwsCompanyPriceCloseDate]
+            limit 1
+            where_ $ t ^. SwsCompanyPriceCloseCompany_id ==. t2 ^. SwsCompanyId
+            pure t
+        pure $ t ^. SwsCompanyPriceClosePrice
 
--- Because of a potential bug https://github.com/bitemyapp/esqueleto/issues/188, the following should but does not work.
--- companiesQuery filters scoreFilter sorting =
---   select $ do
---       t2 <- from $ Table @SwsCompany
+      -- latest overall score
+      overallScore <- pure $ subSelect $ do 
+        t <- from $ SelectQuery $ do
+          t <- from $ Table @SwsCompanyScore
+          orderBy [desc $ t ^. SwsCompanyScoreDate_generated]
+          limit 1
+          where_ $ t ^. SwsCompanyScoreCompany_id ==. t2 ^. SwsCompanyId
+          pure t
+        pure $ t ^. SwsCompanyScoreTotal
 
---       variance <- pure $ subSelectMaybe $ do
---         t1 <- from $ SelectQuery $ do
---             t <- from $ Table @SwsCompanyPriceClose
---             orderBy [desc $ t ^. SwsCompanyPriceCloseDate]
---             limit 90
---             pure t
---         where_ $ t1 ^. SwsCompanyPriceCloseCompany_id ==. t2 ^. SwsCompanyId
---         pure $ avg_ (t1 ^. SwsCompanyPriceClosePrice)
+      -- filtering by exchange symbols if they exists
+      where_ . ( foldr
+               ( \(SymbolFilter cur) acc -> 
+                  acc ||. (t2 ^. SwsCompanyExchange_symbol ==. (val . unpack $ cur)))
+               ( val (1 :: Int64) ==. val 1) )
+             $ filters
 
---       lastPrice <- pure $ subSelect $ do
---         t <- from $ SelectQuery $ do
---             t <- from $ Table @SwsCompanyPriceClose
---             orderBy [desc $ t ^. SwsCompanyPriceCloseDate]
---             limit 1
---             where_ $ t ^. SwsCompanyPriceCloseCompany_id ==. t2 ^. SwsCompanyId
---             pure t
---         pure $ t ^. SwsCompanyPriceClosePrice
+      -- filter above score if it passed in
+      case scoreFilter of
+        Just (ScoreFilter score) ->
+          where_ $ overallScore >=. (just . val $ score)
+        Nothing -> pure ()
 
---       overallScore <- pure $ subSelect $ do 
---         t <- from $ SelectQuery $ do
---           t <- from $ Table @SwsCompanyScore
---           orderBy [desc $ t ^. SwsCompanyScoreDate_generated]
---           limit 1
---           where_ $ t ^. SwsCompanyScoreCompany_id ==. t2 ^. SwsCompanyId
---           pure t
---         pure $ t ^. SwsCompanyScoreTotal
+      -- add soring by score or variance
+      case sorting of
+        Just (Score Asc) -> orderBy [asc $ overallScore]
+        Just (Score Desc) -> orderBy [desc $ overallScore]
+        Just (Variance Asc) -> orderBy [asc variance]
+        Just (Variance Desc) -> orderBy [desc variance]
+        Nothing -> pure ()
 
---       where_ . ( foldr
---                ( \(SymbolFilter cur) acc -> 
---                   acc ||. (t2 ^. SwsCompanyUnique_symbol ==. (val . unpack $ cur)))
---                ( val (1 :: Int64) ==. val 1) )
---              $ filters
-
---       case scoreFilter of
---         Just (ScoreFilter score) ->
---           where_ $ overallScore >=. (just . val $ score)
---         Nothing -> pure ()
-
---       case sorting of
---         Just (Score Asc) -> orderBy [asc $ overallScore]
---         Just (Score Desc) -> orderBy [desc $ overallScore]
---         Just (Variance Asc) -> orderBy [asc variance]
---         Just (Variance Desc) -> orderBy [desc variance]
---         Nothing -> pure ()
-
---       pure (t2, variance, lastPrice, overallScore)
+      pure (t2, variance, lastPrice, overallScore)
 
 pricesQuery :: (MonadIO m, BackendCompatible SqlBackend backend, PersistQueryRead backend, PersistUniqueRead backend, Functor f) => Int64 -> f (Key SwsCompany) -> f (ReaderT backend m [Entity SwsCompanyPriceClose])
 pricesQuery inPastNBars companyIds =
@@ -156,13 +108,3 @@ pricesQuery inPastNBars companyIds =
                   where_ $ close ^. SwsCompanyPriceCloseCompany_id ==. val companyId
                   limit inPastNBars
                   pure close
-
-
--- -- -- for ad-hoc ghci test
--- test :: IO ()
--- test = do
---   companies <- run . companiesQuery [] Nothing $ Nothing
---   print companies
---   -- let companyIds :: [Key SwsCompany] = (\(company, _, _, _) -> entityKey company) <$> companies
---   -- prices <- traverse run $ pricesQuery 90 companyIds
---   pure ()

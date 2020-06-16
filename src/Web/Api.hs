@@ -116,6 +116,6 @@ companyServer numberOfPrices sortBy desc exchanges score = do
 
         pure 
             $ [ Response company score close (sqrt <$> variance) (fromMaybe [] . Map.lookup (entityKey company) $ prices')
-            | (company, E.Single variance, E.Single close, E.Single score) <- companies'
+            | (company, E.Value variance, E.Value close, E.Value score) <- companies'
             ]
         ) >>= \r -> C.insert' cache Nothing cacheKey r *> pure r
