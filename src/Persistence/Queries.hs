@@ -74,11 +74,14 @@ companiesQuery filters scoreFilter sorting =
         pure $ t ^. SwsCompanyScoreTotal
 
       -- filtering by exchange symbols if they exists
-      where_ . ( foldr
-               ( \(SymbolFilter cur) acc -> 
-                  acc ||. (t2 ^. SwsCompanyExchange_symbol ==. (val . unpack $ cur)))
-               ( val (1 :: Int64) ==. val 1) )
-             $ filters
+      case filters of
+        [] -> pure ()
+        (SymbolFilter symbol) : symbols ->
+          where_ . ( foldr
+                    ( \(SymbolFilter cur) acc -> 
+                        acc ||. (t2 ^. SwsCompanyExchange_symbol ==. (val . unpack $ cur)))
+                    (t2 ^. SwsCompanyExchange_symbol ==. (val . unpack $ symbol) )
+                 ) $ symbols
 
       -- filter above score if it passed in
       case scoreFilter of
