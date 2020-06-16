@@ -18,6 +18,17 @@ packages:
       sha256: ea65ba54acb4362efedbfa7db616a51023579a6c83f18ab6d2ea6a84dea56021
   original:
     hackage: servant-server-0.17
+- completed:
+    name: esqueleto
+    version: 3.3.3.0
+    git: https://github.com/belevy/esqueleto
+    pantry-tree:
+      size: 4335
+      sha256: 7f0c81ae2370c5e823a4b7720e8f0af3a42dffe029191d09154118aba73011d7
+    commit: d0e1026306cf4323ed1d642c5d3bfa8cb5ae9c0a
+  original:
+    git: https://github.com/belevy/esqueleto
+    commit: d0e1026306cf4323ed1d642c5d3bfa8cb5ae9c0a
 snapshots:
 - completed:
     size: 496120

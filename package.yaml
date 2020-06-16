@@ -24,7 +24,7 @@ dependencies:
 - persistent >= 2.10.5.2
 - persistent-sqlite >= 2.10.6.2
 - persistent-template >= 2.8.0
-- esqueleto >= 3.3.3.0
+- esqueleto
 - monad-logger >= 0.3.3.2
 - conduit >= 0.2.2
 - time >= 1.8.0.2

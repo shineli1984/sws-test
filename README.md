@@ -5,10 +5,10 @@
 - clone the repo
 
 ### Run
-Backend:
+Backend (stack is setup with docker enabled):
 ```Shell
-stack ghci
-> main
+stack --docker-run-args='--net=bridge --publish=3000:3000' ghci
+ghci> main
 ```
 Frontend:
 ```Shell
