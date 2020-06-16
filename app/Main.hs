@@ -13,7 +13,7 @@ port = 9998
 main :: IO ()
 main = do
   c <- newCache Nothing :: IO (Cache String [Response])
-  println $ "Server running at port " <> show port
+  printLn $ "Server running at port " <> show port
   run port
     . serve api 
     . hoistServer api (`runReaderT` State c) 
