@@ -2,8 +2,12 @@
 
 module Main where
 
-import Web.Api (companyServer, api, Response, State(State))
+import Web.API.Exchange (exchangeServer)
+import Web.API.Company (companyServer)
+import Web.Api (api)
+import qualified State as S
 import Servant.Server (serve, hoistServer)
+import Servant.API ((:<|>)(..))
 import Network.Wai.Handler.Warp (run)
 import Data.Cache (Cache, newCache)
 import Control.Monad.Trans.Reader  (runReaderT)
@@ -13,7 +17,8 @@ import Options.Applicative (execParser, info)
 main :: IO ()
 main = do
   -- setup caching
-  c <- newCache Nothing :: IO (Cache String [Response])
+  c <- newCache Nothing
+  c' <- newCache Nothing
   -- parse command line options
   CommandLineOptions { port
                      , accessControlAllowOrigin
@@ -21,10 +26,10 @@ main = do
                      , connPoolSize
                      } <- execParser readOptions
   -- setup env
-  let env = State c accessControlAllowOrigin connStr connPoolSize
+  let env = S.State c c' accessControlAllowOrigin connStr connPoolSize
   -- start server
   putStrLn $ "Server running at port " <> show port
   run port
     . serve api 
     . hoistServer api (`runReaderT` env)
-    $ companyServer
+    $ companyServer :<|> exchangeServer

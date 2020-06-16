@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b397848e5f50570dc7f0884b1db68ab4b7f64e978ddce065804e70fd6756ad85
+-- hash: 1a6e88a8928e52568edf35e1a69736707503b657cc457dfc77c48f0f1146813e
 
 name:           sws-test
 version:        0.1.0.0
@@ -30,7 +30,11 @@ library
       Options.OptionParser
       Persistence.Queries
       Persistence.Schema
+      State
       Web.Api
+      Web.API.Company
+      Web.API.Exchange
+      Web.API.Lang
   other-modules:
       Paths_sws_test
   hs-source-dirs:

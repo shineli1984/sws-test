@@ -16,6 +16,7 @@ import Control.Monad.Trans.Reader (ReaderT)
 import Data.Text hiding (filter, foldr)
 import GHC.Int (Int64)
 import qualified Data.List as L
+import Data.Aeson (ToJSON)
 import Data.Maybe (maybeToList)
 
 run :: MonadUnliftIO m => Int -> Text -> ReaderT SqlBackend (ResourceT (LoggingT m)) a -> m a
@@ -93,7 +94,7 @@ companiesQuery filters scoreFilter sorting =
 
       pure (t2, variance, lastPrice, overallScore)
 
-pricesQuery :: (MonadIO m, BackendCompatible SqlBackend backend, PersistQueryRead backend, PersistUniqueRead backend, Functor f) => Int64 -> f (Key SwsCompany) -> f (ReaderT backend m [Entity SwsCompanyPriceClose])
+pricesQuery :: Int64 -> [(Key SwsCompany)] -> [Q [Entity SwsCompanyPriceClose]]
 pricesQuery inPastNBars companyIds =
     getPrices <$> companyIds
   where
@@ -105,3 +106,12 @@ pricesQuery inPastNBars companyIds =
                   where_ $ close ^. SwsCompanyPriceCloseCompany_id ==. val companyId
                   limit inPastNBars
                   pure close
+
+newtype Exchange = Exchange String
+exchangesQuery :: Q [Value Exchange]
+exchangesQuery = do
+  exchanges <- select . distinct $ do
+      company <- from $ Table @SwsCompany
+      pure $ company ^. SwsCompanyExchange_symbol
+  pure $ (\e -> Exchange <$> e) <$> exchanges
+

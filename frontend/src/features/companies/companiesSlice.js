@@ -1,15 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { equals } from 'ramda';
+import { compose, equals, values, reject, isNil } from 'ramda';
 import axios from 'axios'
-import { companiesUrl } from '../../config'
+import { companiesUrl, exchangesUrl } from '../../config'
 
 export const initialState = {
   params: null,
-  exchanges: [
-    "NasdaqGS",
-    "ASX",
-    "NYSE"
-  ], // TODO: retriving exchanges from backend
+  exchanges: [],
   companies: [],
   sortBy: {
     desc: null,
@@ -20,9 +16,9 @@ export const initialState = {
     exchanges: []
   },
   loading: true,
-  // TODO: this can be factored out to app level.
   errors: {
-    loadingError: null
+    companiesLoadingError: null,
+    exchangesLoadingError: null
   }
   // TODO: pagination
 }
@@ -57,12 +53,12 @@ export const companiesSlice = createSlice({
       state.loading = true
     },
     companiesLoaded: (state, action) => {
-      const { companies, params } = action.payload
+      const { data, params } = action.payload
 
       if (paramsMatch(state, params)) {
-        state.companies = companies
+        state.companies = data.companies
         state.loading = false
-        state.errors.loadingError = null
+        state.errors.companiesLoadingError = null
         state.params = null
       }
     },
@@ -72,15 +68,44 @@ export const companiesSlice = createSlice({
       if (paramsMatch(state, params)) {
         state.params = null
         state.loading = false
-        state.errors.loadingError = "Loading companies failed, please try again later." 
+        state.errors.companiesLoadingError = "Loading companies failed, please try again later." 
       }
+    },
+    exchangesLoaded: (state, action) => {
+      const { data } = action.payload
+      state.exchanges = data
+    },
+    exchangesLoadingFailed: (state) => {
+      state.errors.exchangesLoadingError = "Loading exchanges failed, please try again later." 
     }
   },
 });
 
 const paramsMatch = (state, params) => equals(state.params, params)
 
-export const { sort, sortDirection, filterScore, filterExchanges, setLoading, loadingCompanies, companiesLoaded, companiesLoadingFailed } = companiesSlice.actions;
+export const { 
+  sort, 
+  sortDirection, 
+  filterScore, 
+  filterExchanges, 
+  setLoading, 
+  loadingCompanies, 
+  companiesLoaded, 
+  companiesLoadingFailed,
+  loadingExchanges,
+  exchangesLoaded,
+  exchangesLoadingFailed
+} = companiesSlice.actions;
+
+export const fetchExchanges = dispatch => {
+  axios.get(exchangesUrl)
+    .then(response => {
+      dispatch(exchangesLoaded({data: response.data}))
+    })
+    .catch(_error => {
+      dispatch(exchangesLoadingFailed())
+    })
+}
 
 export const fetchCompanies = (filters, sortBy) => dispatch => {
   const params = {
@@ -92,7 +117,7 @@ export const fetchCompanies = (filters, sortBy) => dispatch => {
   dispatch(loadingCompanies({ params }))
   axios.get(companiesUrl, { params })
     .then(response => {
-      dispatch(companiesLoaded({companies: response.data, params}))
+      dispatch(companiesLoaded({data: response.data, params}))
     })
     .catch(_error => {
       dispatch(companiesLoadingFailed({ params }))
@@ -104,6 +129,6 @@ export const selectSortBy = state => state.companies.sortBy
 export const selectComapnies = state => state.companies.companies
 export const selectLoading = state => state.companies.loading
 export const selectExchanges = state => state.companies.exchanges
-export const selectLoadingError = state => state.companies.errors.loadingError
+export const selectErrors = state => compose(reject(isNil), values)(state.companies.errors)
 
 export default companiesSlice.reducer;

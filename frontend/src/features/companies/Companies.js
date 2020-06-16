@@ -4,6 +4,7 @@ import {
   selectFilters,
   selectSortBy,
   fetchCompanies,
+  fetchExchanges,
   selectComapnies
 } from './companiesSlice';
 import CompanyList from './CompanyList'
@@ -17,6 +18,10 @@ export function Companies() {
   useEffect(() => {
     dispatch(fetchCompanies(filters, sortBy))
   }, [filters, sortBy, dispatch])
+
+  useEffect(() => {
+    dispatch(fetchExchanges)
+  }, [dispatch])
 
   return <div>
     <Filters />

@@ -1,4 +1,4 @@
-import companiesSliceReducer, { initialState, companiesSlice, sort, sortDirection, filterScore, filterExchanges, setLoading, loadingCompanies, companiesLoaded, companiesLoadingFailed } from './companiesSlice';
+import companiesSliceReducer, { initialState, companiesSlice, sort, sortDirection, filterScore, filterExchanges, setLoading, loadingCompanies, companiesLoaded, companiesLoadingFailed, exchangesLoaded } from './companiesSlice';
 
 describe("companiesSlice", () => {
   describe("reducer", () => {
@@ -62,15 +62,15 @@ describe("companiesSlice", () => {
         const loadCompaniesAction = loadingCompanies({
           params
         })
-        const companies = []
+        const companies = [{}]
         const action = companiesLoaded({
-          companies,
+          data: { companies },
           params
         })
         const companiesLoadedState = companiesSliceReducer(initialState, loadCompaniesAction)
         const actual = companiesSliceReducer(companiesLoadedState, action)
         expect(actual.params).toBe(null)
-        expect(actual.errors.loadingError).toBe(null)
+        expect(actual.errors.companiesLoadingError).toBe(null)
         expect(actual.loading).toBe(false)
         expect(actual.companies).toBe(companies)
       })
@@ -89,7 +89,7 @@ describe("companiesSlice", () => {
         const companiesLoadedState = companiesSliceReducer(initialState, loadCompaniesAction)
         const actual = companiesSliceReducer(companiesLoadedState, action)
         expect(actual.params).toBe(params)
-        expect(actual.errors.loadingError).toBe(null)
+        expect(actual.errors.companiesLoadingError).toBe(null)
         expect(actual.loading).toBe(true)
         expect(actual.companies).toBe(initialState.companies)
       })
@@ -100,7 +100,15 @@ describe("companiesSlice", () => {
       const actual = companiesSliceReducer(initialState, action)
       expect(actual.params).toBe(null)
       expect(actual.loading).toBe(false)
-      expect(actual.errors.loadingError).toBe("Loading companies failed, please try again later.")
+      expect(actual.errors.companiesLoadingError).toBe("Loading companies failed, please try again later.")
+    })
+
+    test("exchangesLoaded", () => {
+      const exchanges = ['NYSE']
+      const action = exchangesLoaded({ data: exchanges })
+      const actual = companiesSliceReducer(initialState, action)
+
+      expect(actual.exchanges).toBe(exchanges)
     })
   });
 })

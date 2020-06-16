@@ -7,7 +7,7 @@ import {
   sortDirection,
   selectFilters,
   selectSortBy,
-  selectLoadingError
+  selectErrors
 } from './companiesSlice';
 import TextField from '@material-ui/core/TextField';
 import { useSelector, useDispatch } from 'react-redux';
@@ -24,7 +24,7 @@ const Filters = () => {
   const exchanges = useSelector(selectExchanges);
   const filters = useSelector(selectFilters);
   const sortBy = useSelector(selectSortBy);
-  const loadingError = useSelector(selectLoadingError);
+  const errors = useSelector(selectErrors);
   const dispatch = useDispatch();
   const dispatchSort = field => dispatch(sort({field}));
   const dispatchsortDirection = desc => dispatch(sortDirection({desc}));
@@ -32,11 +32,12 @@ const Filters = () => {
   return <Box m={2}>
     <Grid container spacing={3}>
       {
-        loadingError ? <Grid item xs={12}><Alert severity="error">{loadingError}</Alert></Grid> : null
+        errors.length > 0 ? <Grid item xs={12}><Alert severity="error">{errors.join("&nbsp;")}</Alert></Grid> : null
       }
       <Grid item xs={12} sm={6} md={4}>
         <Autocomplete
           multiple
+          disabled={exchanges.length === 0}
           value={filters.exchanges}
           filterSelectedOptions
           options={exchanges}
