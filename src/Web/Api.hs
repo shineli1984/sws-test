@@ -40,7 +40,7 @@ type CompanyAPI = "companies" :>
     :> QueryParam "score" Int64
     :> Get '[JSON] (Headers '[Header "Access-Control-Allow-Origin" String] [Response])
   )
-data CompanySortBy 
+data CompanySortBy
   = SortByScore 
   | SortByVariance
   deriving Show
