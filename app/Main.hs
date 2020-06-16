@@ -8,10 +8,13 @@ import Network.Wai.Handler.Warp (run)
 import Data.Cache (Cache, newCache)
 import Control.Monad.Trans.Reader  (runReaderT)
 
+port = 9998
+
 main :: IO ()
 main = do
   c <- newCache Nothing :: IO (Cache String [Response])
-  run 9998 
+  println $ "Server running at port " <> show port
+  run port
     . serve api 
     . hoistServer api (`runReaderT` State c) 
     $ companyServer
